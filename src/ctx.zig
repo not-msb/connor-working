@@ -97,23 +97,6 @@ pub const Context = struct {
         return v;
     }
 
-    //pub fn newVar(self: *Context, name: ?[]const u8, access: Var.Access, ty: Type) Allocator.Error!Var {
-    //    const tag: Var.Tag = if (name) |n| .{ .named = n } else .{ .local = self.count.* };
-    //    const v = .{
-    //        .scope = .local,
-    //        .access = access,
-    //        .tag = tag,
-    //        .ty = ty,
-    //    };
-
-    //    if (name) |n|
-    //        try self.put(n, v)
-    //    else
-    //        self.count.* += 1;
-
-    //    return v;
-    //}
-
     pub fn check(self: *Context, expr: *Ast) Error!Type {
         switch (expr.*) {
             .Integer => return .CompInt,

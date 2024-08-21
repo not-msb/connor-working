@@ -66,12 +66,5 @@ pub fn main() !void {
         if (function.attr.is_comptime)
             continue;
         try function.debugPrint();
-
-        //std.debug.print("\n", .{});
-
-        //const result = function.tree.eval(function.ctx);
-        //try @import("pretty.zig").print(allocator, result, .{});
-
-        //std.debug.print("\n\n\n", .{});
     }
 }

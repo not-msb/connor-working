@@ -12,8 +12,7 @@ const Pair = lib.Pair;
 const Type = lib.Type;
 const Block = lib.ir.Block;
 const Var = lib.Var;
-
-const Cursor = @import("token_cursor.zig").Cursor;
+const Cursor = lib.TokenCursor;
 
 pub const File = struct {
     externs: []const Extern,
@@ -586,8 +585,6 @@ pub const Ast = union(enum) {
         input, const prms = try params(allocator, input);
         input, const body = try expr(allocator, input);
         input, _ = try input.expect(.SemiColon);
-
-        //attr.is_comptime = ret == .Type;
 
         return .{
             input,

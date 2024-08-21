@@ -6,7 +6,7 @@ const ParseError = lib.Error;
 const Location = lib.Location;
 const Type = lib.Type;
 const Ast = lib.ast.Ast;
-const Cursor = @import("text_cursor.zig").Cursor;
+const Cursor = lib.TextCursor;
 
 pub const Token = struct {
     node: Node,

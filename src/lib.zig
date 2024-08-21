@@ -5,14 +5,12 @@ const Allocator = std.mem.Allocator;
 pub const token = @import("token.zig");
 pub const ast = @import("ast.zig");
 pub const ir = @import("ir.zig");
-//pub const walk = @import("walk.zig");
 
 // Single-Type
-//pub const Cursor = @import("cursor.zig").Cursor;
+pub const TextCursor = @import("text_cursor.zig").Cursor;
+pub const TokenCursor = @import("token_cursor.zig").Cursor;
 pub const Type = @import("type.zig").Type;
 pub const Context = @import("ctx.zig").Context;
-//pub const Set = @import("set.zig").Set;
-//pub const Queue = @import("queue.zig").Queue;
 
 pub const Var = struct {
     scope: Scope,

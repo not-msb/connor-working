@@ -58,76 +58,19 @@ pub const Op = union(enum) {
     }
 };
 
-//pub const PhiTarget = struct {
-//    block: *Block,
-//    temp: Var,
-//};
-//
-//pub const Phi = struct {
-//    dest: Var,
-//    canon: Var,
-//    args: ArrayList(PhiTarget),
-//};
-
-// TODO: Implement all of these as efficient functions
 pub const Block = struct {
     id: usize,
-    //phis: ArrayList(Phi),
     ops: ArrayList(Op),
-    //preds: Set(*Block),
-    //succs: Set(*Block),
-    //doms: Set(*Block),
-    //subs: Set(*Block),
-    //fronts: Set(*Block),
 
     pub fn new(allocator: Allocator, id: usize) Block {
         return .{
             .id = id,
             .ops = ArrayList(Op).init(allocator),
-            //.preds = Set(*Block).init(allocator),
-            //.succs = Set(*Block).init(allocator),
-            //.doms = Set(*Block).init(allocator),
-            //.subs = Set(*Block).init(allocator),
-            //.fronts = Set(*Block).init(allocator),
         };
     }
 
     fn debugPrint(self: Block, allocator: Allocator) Allocator.Error!void {
-        //std.debug.print("# Preds", .{});
-        //for (self.preds.items()) |pred|
-        //    std.debug.print(", {d}", .{pred.id});
-        //std.debug.print("\n", .{});
-
-        //std.debug.print("# Succs", .{});
-        //for (self.succs.items()) |succ|
-        //    std.debug.print(", {d}", .{succ.id});
-        //std.debug.print("\n", .{});
-
-        //std.debug.print("# Doms", .{});
-        //for (self.doms.items()) |dom|
-        //    std.debug.print(", {d}", .{dom.id});
-        //std.debug.print("\n", .{});
-
-        //std.debug.print("# Subs", .{});
-        //for (self.subs.items()) |sub|
-        //    std.debug.print(", {d}", .{sub.id});
-        //std.debug.print("\n", .{});
-
-        //std.debug.print("# Fronts", .{});
-        //for (self.fronts.items()) |front|
-        //    std.debug.print(", {d}", .{front.id});
-        //std.debug.print("\n", .{});
-
         std.debug.print("@L{d}\n", .{self.id});
-        //for (self.phis.items) |phi| {
-        //    std.debug.print("\t{s} ={s} phi", .{ try phi.dest.fmt(allocator), phi.dest.ty.fmtBase().? });
-        //    const args = phi.args.items;
-        //    for (args, 0..) |arg, i| {
-        //        std.debug.print(" @L{d} {s}", .{ arg.block.id, try arg.temp.fmt(allocator) });
-        //        if (i != args.len - 1) std.debug.print(",", .{});
-        //    }
-        //    std.debug.print("\n", .{});
-        //}
 
         for (self.ops.items) |op| {
             switch (op) {
@@ -210,12 +153,6 @@ pub const Function = struct {
     pub fn actualInit(self: *Function) ParseError!void {
         var block = try self.newBlock();
         _ = try self.tree.flatten(self.ctx, self, &block);
-        //try self.createGraph();
-
-        //const allocator = self.blocks.allocator;
-        //const vars = try lib.walk.calcVars(allocator, self.*);
-        //try lib.walk.placePhis(allocator, &vars);
-        //try lib.walk.statisize(allocator, self.*);
     }
 
     pub fn addJmp(self: *Function, start: *Block, end: *Block) Allocator.Error!void {
@@ -265,82 +202,6 @@ pub const Function = struct {
     pub fn get(self: Function, index: usize) *Block {
         return &self.blocks.items[index];
     }
-
-    //pub fn createGraph(self: Function) Allocator.Error!void {
-    //    for (self.blocks.items) |*block| {
-    //        block.preds.map.clearAndFree();
-    //        block.succs.map.clearAndFree();
-    //        block.doms.map.clearAndFree();
-    //        block.subs.map.clearAndFree();
-    //        block.fronts.map.clearAndFree();
-    //    }
-
-    //    // Preds & Succs
-    //    for (self.blocks.items) |*block| {
-    //        for (block.ops.items) |op| {
-    //            switch (op) {
-    //                .Jnz => |t| {
-    //                    try block.succs.set(self.get(t.succ));
-    //                    try self.get(t.succ).preds.set(block);
-
-    //                    try block.succs.set(self.get(t.fail));
-    //                    try self.get(t.fail).preds.set(block);
-    //                },
-    //                .Jmp => |v| {
-    //                    try block.succs.set(self.get(v));
-    //                    try self.get(v).preds.set(block);
-    //                },
-    //                else => continue,
-    //            }
-    //        }
-    //    }
-
-    //    // Doms
-    //    const entry = self.get(0);
-    //    try entry.doms.set(entry);
-    //    for (self.blocks.items[1..]) |*block| {
-    //        for (self.blocks.items) |*b|
-    //            try block.doms.set(b);
-    //    }
-
-    //    while (true) {
-    //        var changed = false;
-
-    //        for (self.blocks.items[1..]) |*block| {
-    //            const preds = block.preds.items();
-    //            var new = switch (preds.len) {
-    //                0 => Set(*Block).init(self.blocks.allocator),
-    //                else => b: {
-    //                    var out = try preds[0].doms.clone();
-    //                    for (preds[1..]) |pred|
-    //                        out = try out.intersection(pred.doms);
-    //                    break :b out;
-    //                },
-    //            };
-
-    //            try new.set(block);
-    //            if (!block.doms.eql(new)) {
-    //                block.doms = new;
-    //                changed = true;
-    //            }
-    //        }
-
-    //        if (!changed) break;
-    //    }
-
-    //    // Subs
-    //    for (self.blocks.items) |*block|
-    //        for (block.doms.items()) |dom|
-    //            try dom.*.subs.set(block);
-
-    //    // Fronts
-    //    for (self.blocks.items) |*block|
-    //        for (block.doms.items()) |dom|
-    //            for (dom.subs.items()) |sub|
-    //                for (sub.succs.items()) |item|
-    //                    if (!dom.subs.get(item) or item.id == dom.id)
-    //                        try block.fronts.set(item);
-    //}
 
     pub fn debugPrint(self: Function) Allocator.Error!void {
         if (self.attr.exported)
