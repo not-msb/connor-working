@@ -1,0 +1,13 @@
+data $fmt = { b "%d\n", b 0 }
+
+function l $print(l %num) {
+@L0
+    call $printf(l $fmt, ..., w %num)
+    ret 0
+}
+
+function $printByte(ub %num) {
+@L0
+    call $printf(l $fmt, ..., ub %num)
+    ret
+}

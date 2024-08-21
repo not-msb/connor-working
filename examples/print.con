@@ -1,0 +1,11 @@
+extern &u8 malloc(u64 size);
+extern void free(&u8 ptr);
+extern void printByte(u8 x);
+
+export u64 main() {
+    &u8 b = malloc(10);
+    *b = 10;
+    printByte(*b);
+    free(b);
+    return 0;
+};

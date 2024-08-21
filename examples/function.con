@@ -1,0 +1,11 @@
+u32 double(u32 n) {
+    return n * 2;
+};
+
+u32 map(fn (u32) u32 f, u32 n) {
+    return f(n);
+};
+
+export u32 main() {
+    return map(double, 10);
+};

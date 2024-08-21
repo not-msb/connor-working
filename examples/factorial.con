@@ -1,0 +1,15 @@
+extern u64 print(u64 x);
+
+u64 factorial(u64 n) {
+    u64 x = if (n != 0) n * factorial(n-1) else 1;
+    return x;
+};
+
+export u64 main() {
+    u64 i = 0;
+    while (i != 20) {
+        print(factorial(i));
+        i = i + 1;
+    };
+    return 0;
+};

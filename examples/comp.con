@@ -1,0 +1,45 @@
+extern &u8 malloc(u64 size);
+extern void free(&u8 ptr);
+extern void printByte(u8 x);
+
+//u64 test() 1 + 2 + 3;
+
+// IGNORE THE FACT THAT COMPTIME FUNCTIONS HAVE NO RETURN
+// NOT IMPORTANTO
+
+comptime type simple() u64;
+
+comptime type echo(type T) return T;
+comptime type unstable(type T, u64 x) if (x == 0) u32 else u8;
+comptime u64 weird(type T, u64 x) return if (T == u8) 0 else 1;
+
+comptime type block(type T) {
+    if (T == u8 ) return u64;
+    if (T == u32) return u32;
+    if (T == u64) return u8;
+
+    return void;
+};
+
+u64 run_add(u64 a, u64 b) return a + b;
+comptime u64 comp_add(u64 a, u64 b) return a + b;
+
+export u64 main() {
+    // TODO TODO TODO
+    // Make this work
+    //u64 y = 0;
+    //type T = unstable(u32, y);
+    //type T = echo(u32);
+    type T = block(void);
+    //T x = 1 + 2 + 3;
+
+    //u64 a = 1 + 2 + 3;
+    //u64 a = run_add(run_add(1, 2), 3);
+    u64 a = comp_add(comp_add(1, 2), 3);
+    u64 b = 1;
+    a = b = a + b;
+
+    return a;
+    //return if (T == u64) 0 else if (T == u32) 1 else if (T == u8) 2 else 3;
+    //return weird(u64, 9);
+};
