@@ -83,6 +83,9 @@ pub const Stmt = union(enum) {
         dst: []const u8,
         src: *Ast,
         ty: *Ast,
+        // attrs, this stuff is handled when type-checking
+        // TODO: this will be moved, when mutab-keywords are added
+        is_comptime: bool = false,
     },
 };
 
@@ -142,10 +145,7 @@ pub const Ast = union(enum) {
                 const value = ctx.get(v).?;
                 return value.scope == .compile_time;
             },
-            .BinOp => |t| t.lhs.isComptime(ctx) and t.rhs.isComptime(ctx) and switch (t.kind) {
-                .Add, .Eq => true,
-                else => false,
-            },
+            .BinOp => |t| t.lhs.isComptime(ctx) and t.rhs.isComptime(ctx),
             .If => |t| t.cond.isComptime(ctx) and t.succ.isComptime(ctx) and t.fail.isComptime(ctx),
             .Call => |t| {
                 if (!t.name.isComptime(ctx))
@@ -168,11 +168,12 @@ pub const Ast = union(enum) {
         if (!self.isComptime(ctx))
             return ParseError.NonComptimeEval;
 
-        return self.evalExt(ctx).value;
+        const ext = try self.evalExt(ctx);
+        return ext.value;
     }
 
 
-    fn evalExt(self: Ast, ctx: *Context) Eval {
+    fn evalExt(self: Ast, ctx: *Context) Allocator.Error!Eval {
         //std.debug.print("Trying to eval ", .{});
         //@import("pretty.zig").print(ctx.map.allocator, self, .{}) catch unreachable;
 
@@ -210,8 +211,8 @@ pub const Ast = union(enum) {
                 .is_return = false,
             },
             .BinOp => |t| {
-                const lhs_ext = t.lhs.evalExt(ctx);
-                const rhs_ext = t.rhs.evalExt(ctx);
+                const lhs_ext = try t.lhs.evalExt(ctx);
+                const rhs_ext = try t.rhs.evalExt(ctx);
                 if (lhs_ext.is_return) return lhs_ext;
                 if (rhs_ext.is_return) return rhs_ext;
                 const lhs = lhs_ext.value;
@@ -221,8 +222,9 @@ pub const Ast = union(enum) {
 
                 const lit = switch (t.kind) {
                     .Add => lhs.tag.liter + rhs.tag.liter,
+                    .Sub => lhs.tag.liter - rhs.tag.liter,
+                    .Mul => lhs.tag.liter * rhs.tag.liter,
                     .Eq => b: {
-                        //std.debug.print("lhs: {}\n", .{lhs.tag});
                         const cond = switch (max) {
                             .Type => Type.eql(lhs.tag.ty, rhs.tag.ty),
                             else => lhs.tag.liter == rhs.tag.liter,
@@ -230,13 +232,19 @@ pub const Ast = union(enum) {
 
                         break :b if (cond) @as(usize, 1) else 0;
                     },
-                    else => unreachable,
+                    .Ne => b: {
+                        const cond = switch (max) {
+                            .Type => Type.eql(lhs.tag.ty, rhs.tag.ty),
+                            else => lhs.tag.liter == rhs.tag.liter,
+                        };
+
+                        break :b if (!cond) @as(usize, 1) else 0;
+                    },
                 };
 
                 const ty = switch (t.kind) {
-                    .Add => max,
-                    .Eq => .Bool,
-                    else => unreachable,
+                    .Add, .Sub, .Mul => max,
+                    .Eq, .Ne => .Bool,
                 };
 
                 return .{
@@ -250,7 +258,7 @@ pub const Ast = union(enum) {
                 };
             },
             .If => |t| {
-                const cond_ext = t.cond.evalExt(ctx);
+                const cond_ext = try t.cond.evalExt(ctx);
                 if (cond_ext.is_return) return cond_ext;
                 const cond = cond_ext.value;
 
@@ -262,51 +270,47 @@ pub const Ast = union(enum) {
                     t.fail.evalExt(ctx);
             },
             .Call => |t| {
-                const name_ext = t.name.evalExt(ctx);
+                const name_ext = try t.name.evalExt(ctx);
                 if (name_ext.is_return) return name_ext;
                 const name = name_ext.value;
                 const func = ctx.funcs.get(name.tag.named).?;
 
-                // TODO: actually "try" this code
-                // Im too lazy to care rn
-                var context = func.ctx.child(null) catch unreachable;
+                var context = try func.ctx.child(null);
                 for (t.args, func.params.names) |arg, n| {
-                    const ext = arg.evalExt(ctx);
+                    const ext = try arg.evalExt(ctx);
                     if (ext.is_return) return ext;
-                    context.put(n, ext.value) catch unreachable;
+                    try context.put(n, ext.value);
                 }
 
-                var result = func.tree.evalExt(context);
+                var result = try func.tree.evalExt(context);
                 std.debug.assert(result.is_return);
                 result.is_return = false;
                 return result;
             },
             .Block => |t| {
-                var context = ctx.child(null) catch unreachable;
+                var context = try ctx.child(null);
 
                 for (t.body) |e| {
                     switch (e) {
                         .Ast => |v| {
-                            const ext = v.evalExt(context);
+                            const ext = try v.evalExt(context);
                             if (ext.is_return) return ext;
                         },
                         .Declare => |t2| {
-                            const src_ext = t2.src.evalExt(context);
+                            const src_ext = try t2.src.evalExt(context);
                             if (src_ext.is_return) return src_ext;
-                            var src = src_ext.value;
-
-                            src.access = .deferred;
-                            src.ty = b: {
-                                // TODO: Check comptime here
-                                // Should be a flag in the future
-                                const value = t2.ty.evalExt(context).value;
-                                break :b value.tag.ty;
+                            const src = src_ext.value;
+                            const val = .{
+                                .scope = if (t2.is_comptime) Var.Scope.compile_time else .local,
+                                .access = .deferred,
+                                .tag = src.tag,
+                                .ty = b: {
+                                    const ext = try t2.ty.evalExt(context);
+                                    break :b ext.value.tag.ty;
+                                },
                             };
-                            // TODO: replace with an actual "is_comptime" check
-                            if (src.ty != .Type)
-                                src.scope = .local;
-                            // TODO: Ugh lazy
-                            context.put(t2.dst, src) catch unreachable;
+
+                            try context.put(t2.dst, val);
                         },
                     }
                 }
@@ -314,7 +318,7 @@ pub const Ast = union(enum) {
                 return empty;
             },
             .Return => |v| {
-                const ext = v.evalExt(ctx);
+                const ext = try v.evalExt(ctx);
                 return .{
                     .value = ext.value,
                     .is_return = true,
@@ -378,10 +382,11 @@ pub const Ast = union(enum) {
                 const src = try t.src.flatten(ctx, func, blk);
                 const dst = try t.dst.lvalue(ctx, func, blk);
 
-                try blk.*.ops.append(.{ .Store = .{
-                    .dst = dst,
-                    .src = src,
-                }});
+                if (dst.ty.hasData())
+                    try blk.*.ops.append(.{ .Store = .{
+                        .dst = dst,
+                        .src = src,
+                    }});
 
                 return src;
             },
@@ -413,8 +418,7 @@ pub const Ast = union(enum) {
                 const dest = ctx.newVar(.direct, ty);
                 const loaded = ctx.newVar(.direct, ty);
 
-                // TODO: getting tired of these "quick fixes"
-                if (!(ty == .Void or ty == .NoReturn)) {
+                if (ty.hasData()) {
                     try blk.*.ops.append(.{ .Alloc = .{
                         .dst = dest,
                         .amount = ty.size().?,
@@ -486,21 +490,23 @@ pub const Ast = union(enum) {
                         .Ast => |v| _ = try v.flatten(t.ctx, func, blk),
                         .Declare => |t2| {
                             const src = try t2.src.flatten(t.ctx, func, blk);
-                            const dst = .{
-                                .scope = switch (src.ty) {
-                                    .Type => Var.Scope.compile_time,
-                                    else => .local,
-                                },
+                            const val = .{
+                                // TODO: replace with an actual "is_comptime" check
+                                .scope = if (t2.is_comptime)
+                                    Var.Scope.compile_time
+                                else
+                                    .local,
                                 .access = .deferred,
-                                .tag = .{ .named = t2.dst },
+                                .tag = src.tag,
                                 .ty = b: {
                                     const value = try t2.ty.eval(t.ctx);
                                     break :b value.tag.ty;
                                 },
                             };
 
-                            try t.ctx.put(t2.dst, dst);
-                            if (dst.scope == .compile_time)
+                            try t.ctx.put(t2.dst, val);
+                            const dst = t.ctx.lvalue(t2.dst).?;
+                            if (dst.scope == .compile_time or !dst.ty.hasData())
                                 continue;
 
                             try blk.*.ops.append(.{ .Alloc = .{

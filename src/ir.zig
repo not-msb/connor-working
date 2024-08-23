@@ -91,7 +91,7 @@ pub const Block = struct {
                 },
                 .Store => |t| {
                     std.debug.print("\tstore{s} {s}, {s}\n", .{
-                        t.dst.ty.fmtBase().?,
+                        t.dst.ty.fmtExt().?,
                         try t.src.fmt(allocator),
                         try t.dst.fmt(allocator),
                     });

@@ -43,6 +43,13 @@ pub const Type = union(enum) {
         return if (self.size().? >= rhs.size().?) self else rhs;
     }
 
+    pub fn hasData(self: Type) bool {
+        return switch (self) {
+            .Void, .NoReturn => false,
+            else => true,
+        };
+    }
+
     pub fn eql(self: Type, rhs: Type) bool {
         return switch (self) {
             .Function => |t| {
@@ -88,6 +95,21 @@ pub const Type = union(enum) {
             .Void => "",
             .Bool => "w",
             .U8 => "w",
+            .U32 => "w",
+            .U64 => "l",
+            .CompInt => "l",
+            //else => null,
+            else => "???",
+        };
+    }
+
+    pub fn fmtExt(self: Type) ?[]const u8 {
+        return switch (self) {
+            .Function => "l",
+            .Ptr => "l",
+            .Void => "",
+            .Bool => "b",
+            .U8 => "b",
             .U32 => "w",
             .U64 => "l",
             .CompInt => "l",

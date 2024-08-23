@@ -179,7 +179,7 @@ pub const Context = struct {
                             const ty = try t.ctx.check(v);
                             if (ty == .NoReturn) ret = .NoReturn;
                         },
-                        .Declare => |t2| {
+                        .Declare => |*t2| {
                             const src = try t.ctx.check(t2.src);
                             const value = try t2.ty.eval(t.ctx);
                             std.debug.assert(value.ty == .Type);
@@ -196,11 +196,9 @@ pub const Context = struct {
                                 else => .none,
                             };
 
-                            // TODO: replace with an actual "is_comptime" check
-                            const scope: Var.Scope = switch (ty) {
-                                .Type => .compile_time,
-                                else => .local,
-                            };
+                            // TODO: replace with a comptime keyword check
+                            t2.is_comptime = ty == .Type;
+                            const scope: Var.Scope = if (t2.is_comptime) .compile_time else .local;
 
                             const dst = .{
                                 .scope = scope,
@@ -214,6 +212,7 @@ pub const Context = struct {
                         },
                     }
                 }
+
                 return ret;
             },
             .Return => |v| {

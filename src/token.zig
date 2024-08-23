@@ -67,6 +67,7 @@ pub const Token = struct {
         .{ "u64", .{ .Type = .U64 } },
         .{ "type", .{ .Type = .Type } },
         .{ "void", .{ .Type = .Void } },
+        .{ "bool", .{ .Type = .Bool } },
         .{ "noreturn", .{ .Type = .NoReturn } },
     });
 

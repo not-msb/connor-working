@@ -1,0 +1,9 @@
+export u8 main() {
+    bool true = 0==0;
+    bool false = 0!=0;
+
+    void v1 = if (true) {} else {};
+    v1 = {};
+
+    return 0;
+};

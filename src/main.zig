@@ -51,10 +51,12 @@ pub fn main() !void {
         return;
     };
 
-    file.scan(allocator) catch |err| {
-        handleError(filename, input, err);
-        return;
-    };
+    try file.scan(allocator);
+    // TODO: Actually make handling somewhat good
+    //file.scan(allocator) catch |err| {
+    //    handleError(filename, input, err);
+    //    return;
+    //};
 
     for (file.functions) |*function| {
         if (function.attr.is_comptime)
